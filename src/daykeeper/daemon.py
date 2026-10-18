@@ -5,12 +5,15 @@ import logging
 import signal
 from datetime import datetime
 
+import httpx
+
 from .config import Config
 from .db import connect
 from .notify import DesktopNotifier, Notifier
 from .rpc import serve
 from .scheduler import describe_events, due_reminders, reminder_text
 from .service import Service, ServiceError
+from .telegram import TelegramBot
 
 log = logging.getLogger("daykeeper")
 
@@ -21,6 +24,10 @@ class Daemon:
         self.clock = clock
         self.service = Service(connect(cfg.db_path), cfg, clock)
         self.notifiers: list[Notifier] = [DesktopNotifier(self.handle_action)]
+        self.bot: TelegramBot | None = None
+        if cfg.tg_token and cfg.tg_chat_id:
+            self.bot = TelegramBot(cfg.tg_token, cfg.tg_chat_id, self.service, httpx.AsyncClient())
+            self.notifiers.append(self.bot)
         self.service.on_event = self._on_events
         self._last_check = clock()
         self._stop = asyncio.Event()
@@ -92,8 +99,8 @@ class Daemon:
             await server.close()
 
     def background(self) -> list:
-        """Extra long-running coroutines (the Telegram bot hooks in here)."""
-        return []
+        """Extra long-running coroutines."""
+        return [self.bot.run()] if self.bot else []
 
 
 def run_daemon(cfg: Config) -> None:

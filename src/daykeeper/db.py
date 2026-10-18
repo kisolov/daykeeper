@@ -84,6 +84,8 @@ def connect(path: Path) -> sqlite3.Connection:
     con = sqlite3.connect(path, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
+    con.execute("PRAGMA journal_mode = WAL")
+    con.execute("PRAGMA synchronous = NORMAL")
     version = con.execute("PRAGMA user_version").fetchone()[0]
     for i, script in enumerate(MIGRATIONS[version:], start=version + 1):
         con.executescript(script)

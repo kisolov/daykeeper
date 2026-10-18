@@ -315,8 +315,11 @@ class Service:
         by_day = self.stats.focus_by_day(_date(start), _date(end))
         return {"focus_by_day": {d.isoformat(): s for d, s in by_day.items()}, "total_s": sum(by_day.values())}
 
-    def dashboard(self) -> dict:
-        return self.stats.dashboard(self.clock())
+    def dashboard(self, day=None) -> dict:
+        now = self.clock()
+        if day is not None:
+            now = datetime.combine(_date(day), now.time())
+        return self.stats.dashboard(now)
 
     def history(self, start, end) -> list[dict]:
         s, e = _date(start), _date(end)

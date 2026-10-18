@@ -142,3 +142,9 @@ def test_stats_range_and_history(svc):
     assert r["total_s"] == 0 and len(r["focus_by_day"]) == 7
     h = svc.call("history", start="2026-10-18", end="2026-10-18")
     assert h[0]["not_done"] == ["зубы"]
+
+
+def test_dashboard_for_other_week(svc):
+    d = svc.call("dashboard", day="2026-10-08")
+    assert d["week"]["start"] == "2026-10-05"
+    assert svc.call("dashboard")["week"]["start"] == "2026-10-12"

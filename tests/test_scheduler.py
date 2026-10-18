@@ -60,3 +60,27 @@ def test_describe_completed_no_break():
 
 def test_describe_last_break_end():
     assert describe_events([PhaseEnded(1, Phase("break", 13), None)], lambda i: "код") == [("отдых закончился", "код")]
+
+
+from daykeeper.scheduler import event_sound  # noqa: E402
+
+
+def test_sound_break():
+    assert event_sound([PhaseEnded(1, Phase("work", 47), Phase("break", 13))]) == "break"
+
+
+def test_sound_back_to_work():
+    assert event_sound([PhaseEnded(1, Phase("break", 13), Phase("work", 47))]) == "work"
+
+
+def test_sound_done_wins():
+    events = [PhaseEnded(1, Phase("work", 47), Phase("break", 13)), TaskCompleted(1)]
+    assert event_sound(events) == "done"
+
+
+def test_no_sound_for_manual_skip():
+    assert event_sound([PhaseEnded(1, Phase("work", 47), Phase("break", 13), natural=False)]) is None
+
+
+def test_no_sound_without_events():
+    assert event_sound([]) is None

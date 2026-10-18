@@ -26,3 +26,15 @@ def test_config_path_overrides(tmp_path, monkeypatch):
     monkeypatch.setenv("DAYKEEPER_SOCKET", str(tmp_path / "s.sock"))
     c = load_config(tmp_path / "none.toml")
     assert c.db_path == tmp_path / "d.db" and c.socket_path == tmp_path / "s.sock"
+
+
+def test_sound_defaults(tmp_path):
+    c = load_config(tmp_path / "none.toml")
+    assert c.sound is True and c.sound_volume == 0.4
+
+
+def test_sound_config(tmp_path):
+    p = tmp_path / "c.toml"
+    p.write_text("[sound]\nenabled = false\nvolume = 0.2\n")
+    c = load_config(p)
+    assert c.sound is False and c.sound_volume == 0.2

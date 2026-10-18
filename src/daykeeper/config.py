@@ -22,6 +22,8 @@ class Config:
     socket_path: Path = None  # type: ignore[assignment]
     tg_token: str | None = None
     tg_chat_id: int | None = None
+    sound: bool = True
+    sound_volume: float = 0.4
 
     def __post_init__(self):
         if self.socket_path is None:
@@ -34,11 +36,14 @@ def load_config(path: Path | None = None) -> Config:
     if path.exists():
         raw = tomllib.loads(path.read_text())
     tg = raw.get("telegram", {})
+    snd = raw.get("sound", {})
     cfg = Config(
         work_min=int(raw.get("work_min", 47)),
         break_min=int(raw.get("break_min", 13)),
         tg_token=tg.get("token"),
         tg_chat_id=int(tg["chat_id"]) if "chat_id" in tg else None,
+        sound=bool(snd.get("enabled", True)),
+        sound_volume=float(snd.get("volume", 0.4)),
     )
     if token := os.environ.get("DAYKEEPER_TG_TOKEN"):
         cfg.tg_token = token

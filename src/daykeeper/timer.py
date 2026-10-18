@@ -23,6 +23,7 @@ class PhaseEnded:
     task_id: int
     phase: Phase
     next: Phase | None
+    natural: bool = True  # False when the user skipped the phase
 
 
 @dataclass
@@ -91,7 +92,7 @@ class Timer:
         st = self.state
         ended = st.phases[st.phase_index]
         nxt = st.phases[st.phase_index + 1] if st.phase_index + 1 < len(st.phases) else None
-        events: list[Event] = [PhaseEnded(st.task_id, ended, nxt)]
+        events: list[Event] = [PhaseEnded(st.task_id, ended, nxt, natural)]
         last_work = ended.kind == "work" and all(p.kind != "work" for p in st.phases[st.phase_index + 1:])
         if natural and last_work:
             self.repo.set_done(st.task_id, True, at)

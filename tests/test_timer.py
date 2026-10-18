@@ -247,3 +247,19 @@ def test_restore_with_missing_task_clears_state(env, clock):
     fresh = Timer(repo, Config(), clock)
     fresh.restore()
     assert fresh.state is None and repo.load_timer() is None
+
+
+def test_skip_marks_phase_end_unnatural(env):
+    repo, timer, clock = env
+    t = add(repo, 60)
+    timer.start(t.id)
+    events = timer.skip()
+    assert events[0].natural is False
+
+
+def test_natural_phase_end_is_natural(env):
+    repo, timer, clock = env
+    t = add(repo, 60)
+    timer.start(t.id)
+    events = run_for(timer, clock, 47 * 60)
+    assert events[0].natural is True

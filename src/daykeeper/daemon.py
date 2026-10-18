@@ -9,9 +9,9 @@ import httpx
 
 from .config import Config
 from .db import connect
-from .notify import DesktopNotifier, Notifier
+from .notify import DesktopNotifier, Notifier, SoundPlayer
 from .rpc import serve
-from .scheduler import describe_events, due_reminders, reminder_text
+from .scheduler import describe_events, due_reminders, event_sound, reminder_text
 from .service import Service, ServiceError
 from .telegram import TelegramBot
 
@@ -24,6 +24,7 @@ class Daemon:
         self.clock = clock
         self.service = Service(connect(cfg.db_path), cfg, clock)
         self.notifiers: list[Notifier] = [DesktopNotifier(self.handle_action)]
+        self.sound = SoundPlayer(cfg)
         self.bot: TelegramBot | None = None
         if cfg.tg_token and cfg.tg_chat_id:
             self.bot = TelegramBot(cfg.tg_token, cfg.tg_chat_id, self.service, httpx.AsyncClient())
@@ -63,13 +64,18 @@ class Daemon:
     def _on_events(self, events) -> None:
         for title, body in describe_events(events, self._title):
             self._broadcast(title, body, {})
+        if kind := event_sound(events):
+            self.sound.play(kind)
 
     def check_reminders(self) -> None:
         now = self.clock()
         tasks = self.service.repo.tasks(now.date())
-        for task in due_reminders(tasks, self._last_check, now):
+        due = due_reminders(tasks, self._last_check, now)
+        for task in due:
             title, body = reminder_text(task)
             self._broadcast(title, body, {f"start:{task.id}": "▶ Запустить", f"done:{task.id}": "✓ Сделано"})
+        if due:
+            self.sound.play("reminder")
         self._last_check = now
 
     async def run(self) -> None:

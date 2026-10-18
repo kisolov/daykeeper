@@ -38,3 +38,13 @@ def describe_events(events: list[Event], title_of: Callable[[int], str]) -> list
         else:
             out.append(("отдых закончился", title))
     return out
+
+
+def event_sound(events: list[Event]) -> str | None:
+    """At most one soft sound per batch; nothing for things the user did by hand."""
+    if any(isinstance(e, TaskCompleted) for e in events):
+        return "done"
+    for e in events:
+        if isinstance(e, PhaseEnded) and e.natural and e.next is not None:
+            return "break" if e.next.kind == "break" else "work"
+    return None

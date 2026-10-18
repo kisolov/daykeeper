@@ -39,6 +39,10 @@ break_min = 13
 [telegram]
 token = "123:ABC"      # или переменная DAYKEEPER_TG_TOKEN
 chat_id = 123456789    # бот отвечает только этому чату
+
+[sound]
+enabled = true         # тихий звук: «пора», перерыв, снова работа, задача готова
+volume = 0.4           # 0..1; на свои действия (пропуск, пауза, стоп) звука нет
 ```
 
 Данные — `~/.local/share/daykeeper/daykeeper.db`, сокет — `$XDG_RUNTIME_DIR/daykeeper.sock`.

@@ -5,6 +5,48 @@ import shutil
 from collections.abc import Callable
 from typing import Protocol
 
+from .config import Config
+
+
+_THEME = "/usr/share/sounds/freedesktop/stereo"
+SOUNDS = {
+    "reminder": f"{_THEME}/message.oga",
+    "break": f"{_THEME}/complete.oga",
+    "work": f"{_THEME}/dialog-information.oga",
+    "done": f"{_THEME}/complete.oga",
+}
+
+
+def sound_command(kind: str, cfg: Config, which: Callable[[str], str | None] = shutil.which) -> list[str] | None:
+    if not cfg.sound or kind not in SOUNDS:
+        return None
+    if player := which("pw-play"):
+        return [player, "--volume", f"{cfg.sound_volume:g}", SOUNDS[kind]]
+    if player := which("paplay"):
+        return [player, "--volume", str(int(cfg.sound_volume * 65536)), SOUNDS[kind]]
+    return None
+
+
+class SoundPlayer:
+    def __init__(self, cfg: Config):
+        self.cfg = cfg
+        self._tasks: set[asyncio.Task] = set()
+
+    def play(self, kind: str | None) -> None:
+        cmd = sound_command(kind, self.cfg) if kind else None
+        if cmd:
+            task = asyncio.get_running_loop().create_task(self._run(cmd))
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
+
+    async def _run(self, cmd: list[str]) -> None:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            await proc.wait()
+        except OSError:
+            pass
+
 
 class Notifier(Protocol):
     async def notify(self, title: str, body: str, actions: dict[str, str]) -> None: ...

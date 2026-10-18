@@ -10,6 +10,10 @@ from .pomodoro import split_phases
 from .repo import Repo
 
 
+GAP_S = 30  # longer silence between ticks = suspend/crash, not work
+HEARTBEAT_S = 5  # how often a running timer persists its last tick
+
+
 class TimerError(ValueError):
     pass
 
@@ -35,6 +39,7 @@ class Timer:
         self.cfg = cfg
         self.clock = clock
         self.state: TimerState | None = repo.load_timer()
+        self._persisted = datetime.min
 
     # --- queries ---------------------------------------------------------
 
@@ -118,23 +123,22 @@ class Timer:
         index, elapsed = task.progress_phase, task.progress_elapsed_s
         if index >= len(phases) or elapsed >= phases[index].minutes * 60:
             index, elapsed = 0, 0
-        self.state = TimerState(task_id, phases, index, elapsed, True, self.clock())
+        now = self.clock()
+        self.state = TimerState(task_id, phases, index, elapsed, True, now, heartbeat=now)
         self._save()
         return []
 
     def pause(self) -> None:
         if not self._alive() or not self.state.running:
             return
-        self._record(self.clock(), completed=False)
-        self.state.running = False
-        self.state.resumed_at = None
+        self._pause_at(self.clock())
         self._save()
 
     def resume(self) -> None:
         if not self._alive() or self.state.running:
             return
         self.state.running = True
-        self.state.resumed_at = self.clock()
+        self.state.resumed_at = self.state.heartbeat = self.clock()
         self._save()
 
     def toggle(self) -> None:
@@ -158,29 +162,56 @@ class Timer:
         self._save() if self.state else self.repo.save_timer(None)
         return events
 
-    def tick(self) -> list[Event]:
+    def _run_until(self, at: datetime) -> list[Event]:
+        """Close every phase that naturally ended by `at`."""
         events: list[Event] = []
-        now = self.clock()
-        if not self._alive():
-            return events
         while self.state is not None and self.state.running:
-            left = self._phase_s() - self._elapsed(now)
-            if left > 0:
+            if self._phase_s() - self._elapsed(at) > 0:
                 break
             phase_end = self.state.resumed_at + timedelta(seconds=self._phase_s() - self.state.phase_elapsed_s)
             self._record(phase_end, completed=True)
             events += self._advance(phase_end, natural=True)
-        if events:
+        return events
+
+    def _pause_at(self, at: datetime) -> None:
+        self._record(at, completed=False)
+        self.state.running = False
+        self.state.resumed_at = None
+        self.state.heartbeat = None
+
+    def _last_seen(self) -> datetime:
+        st = self.state
+        return max(st.resumed_at, st.heartbeat) if st.heartbeat else st.resumed_at
+
+    def tick(self) -> list[Event]:
+        """Called about once a second. A gap longer than GAP_S means the machine slept:
+        credit time only up to the last tick and pause there."""
+        now = self.clock()
+        if not self._alive() or not self.state.running:
+            return []
+        last = self._last_seen()
+        if (now - last).total_seconds() > GAP_S:
+            events = self._run_until(last)
+            if self.state is not None and self.state.running:
+                self._pause_at(last)
             self._save() if self.state else self.repo.save_timer(None)
+            return events
+        events = self._run_until(now)
+        if self.state is None:
+            self.repo.save_timer(None)
+            return events
+        if self.state.running:
+            self.state.heartbeat = now
+        if events or (now - self._persisted).total_seconds() >= HEARTBEAT_S:
+            self._save()
+            self._persisted = now
         return events
 
     def restore(self) -> None:
-        """After a daemon restart: bank time up to now (capped at the phase end) and pause."""
+        """After a daemon restart or power loss: credit time only up to the last heartbeat, then pause."""
         if not self._alive() or not self.state.running:
             return
         st = self.state
         phase_end = st.resumed_at + timedelta(seconds=self._phase_s() - st.phase_elapsed_s)
-        self._record(min(self.clock(), phase_end), completed=False)
-        st.running = False
-        st.resumed_at = None
+        self._pause_at(min(self._last_seen(), phase_end))
         self._save()

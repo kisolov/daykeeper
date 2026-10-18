@@ -331,6 +331,7 @@ class Repo:
             phases=[Phase(p["kind"], p["minutes"]) for p in json.loads(row["phases_json"])],
             phase_index=row["phase_index"], phase_elapsed_s=row["phase_elapsed_s"],
             running=bool(row["running"]), resumed_at=_dt(row["resumed_at"]),
+            heartbeat=_dt(row["heartbeat"]),
         )
 
     def save_timer(self, state: TimerState | None) -> None:
@@ -338,9 +339,10 @@ class Repo:
             self.con.execute("DELETE FROM timer")
             if state is not None:
                 self.con.execute(
-                    "INSERT INTO timer (id, task_id, phases_json, phase_index, phase_elapsed_s, running, resumed_at)"
-                    " VALUES (1,?,?,?,?,?,?)",
+                    "INSERT INTO timer (id, task_id, phases_json, phase_index, phase_elapsed_s, running, resumed_at, heartbeat)"
+                    " VALUES (1,?,?,?,?,?,?,?)",
                     (state.task_id, json.dumps([{"kind": p.kind, "minutes": p.minutes} for p in state.phases]),
-                     state.phase_index, state.phase_elapsed_s, int(state.running), _iso(state.resumed_at)),
+                     state.phase_index, state.phase_elapsed_s, int(state.running), _iso(state.resumed_at),
+                     _iso(state.heartbeat)),
                 )
 

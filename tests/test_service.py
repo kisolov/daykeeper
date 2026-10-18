@@ -98,8 +98,9 @@ def test_events_emitted(svc, clock):
     svc.on_event = got.extend
     t = svc.call("task_quick_add", text="код 1ч")
     svc.call("timer_start", task_id=t["id"])
-    clock.advance(47 * 60)
-    svc.tick()
+    for _ in range(47 * 60 // 5):
+        clock.advance(5)
+        svc.tick()
     assert any(type(e).__name__ == "TaskCompleted" for e in got)
 
 

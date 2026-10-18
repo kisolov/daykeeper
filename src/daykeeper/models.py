@@ -59,6 +59,7 @@ class TimerState:
     phase_elapsed_s: int
     running: bool
     resumed_at: datetime | None
+    heartbeat: datetime | None = None  # last tick while running; bounds crash/suspend credit
 
 
 @dataclass

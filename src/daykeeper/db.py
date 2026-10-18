@@ -76,7 +76,9 @@ CREATE TABLE timer (
 );
 """
 
-MIGRATIONS = [SCHEMA_V1]
+SCHEMA_V2 = "ALTER TABLE timer ADD COLUMN heartbeat TEXT;"
+
+MIGRATIONS = [SCHEMA_V1, SCHEMA_V2]
 
 
 def connect(path: Path) -> sqlite3.Connection:

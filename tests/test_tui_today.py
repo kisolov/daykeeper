@@ -7,6 +7,7 @@ from daykeeper.service import Service
 from daykeeper.tui.app import DaykeeperApp
 from daykeeper.tui.summary import SummaryScreen
 from daykeeper.tui.today import TodayScreen
+from daykeeper.tui.widgets import POMODORO, TIMER
 
 from .tui_backend import DownBackend, FakeBackend
 
@@ -42,8 +43,8 @@ async def test_rows_in_order_without_groups(day_svc):
         assert [r.split("]", 1)[1].strip().split("  ")[0] for r in rows] == [
             "09–10 работа", "почистить зубы", "тренировка", "прочитать 20 страниц", "19–20 VPN-бот"]
         assert rows[1].rstrip().endswith("✓")
-        assert rows[2].rstrip().endswith("⏱ 2ч · 2🍅")
-        assert rows[0].rstrip().endswith("1🍅")
+        assert rows[2].rstrip().endswith(f"{TIMER} 2ч · 2{POMODORO}")
+        assert rows[0].rstrip().endswith(f"1{POMODORO}")
 
 
 async def test_header(day_svc):
@@ -124,7 +125,7 @@ async def test_quick_add(svc):
         await pilot.press(*"тренировка 2ч")
         await pilot.press("enter")
         await pilot.pause()
-        assert lines(app)[0].rstrip().endswith("⏱ 2ч · 2🍅")
+        assert lines(app)[0].rstrip().endswith(f"{TIMER} 2ч · 2{POMODORO}")
 
 
 async def test_quick_add_bad_input(svc):

@@ -33,7 +33,7 @@ class SummaryScreen(Screen):
         out.append("СВОДКА", style=f"bold {w.BRIGHT}")
         out.append(f" · {w.WEEKDAYS[d.weekday()]} {d.day} {w.MONTHS[d.month - 1]}\n", style=w.MUTED)
         out.append_text(w.rule())
-        out.append(f"\n{fmt_duration(s['focus_s'])} фокуса · {s['pomodoros']}🍅 · "
+        out.append(f"\n{fmt_duration(s['focus_s'])} фокуса · {s['pomodoros']}{w.POMODORO} · "
                    f"сделано {len(s['done'])} из {len(s['done']) + len(s['not_done'])}\n\n")
         out.append("сделано\n", style=w.MUTED)
         for title in s["done"]:
@@ -51,7 +51,7 @@ class SummaryScreen(Screen):
             for h in s["habits"]:
                 out.append(" ■ " if h["done"] else " □ ", style=w.OK if h["done"] else w.BAD)
                 out.append(f"{h['title']}")
-                out.append(f"  🔥{h['streak']}\n" if h["streak"] else "\n", style=w.BRIGHT)
+                out.append(f"  {w.FIRE}{h['streak']}\n" if h["streak"] else "\n", style=w.BRIGHT)
         goals = [g for g in s["goals"] if g["value"] is not None]
         if goals:
             out.append("\nцели\n", style=w.MUTED)

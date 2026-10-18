@@ -14,7 +14,12 @@ WARN = "#e3c26f"
 BAD = "#c97a7a"
 FG = "#cfe6f2"
 
-WEEKDAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
+# Nerd Font glyphs (single cell in "JetBrainsMono Nerd Font Mono"); no emoji font is assumed.
+POMODORO = ""  # pomicons: pomodoro
+TIMER = "\U000f051b"  # md: timer_outline
+FIRE = "\U000f0238"  # md: fire
+
+WEEKDAYS =["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
 MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 WIDTH = 50
 
@@ -34,8 +39,8 @@ def task_meta(task: dict) -> str:
     if task["kind"] == "check":
         return "✓"
     if task["kind"] == "duration":
-        return f"⏱ {fmt_duration(task['duration_min'] * 60)} · {task['pomodoros']}🍅"
-    return f"{task['pomodoros']}🍅"
+        return f"{TIMER} {fmt_duration(task['duration_min'] * 60)} · {task['pomodoros']}{POMODORO}"
+    return f"{task['pomodoros']}{POMODORO}"
 
 
 def fit(text: str, cells: int) -> str:

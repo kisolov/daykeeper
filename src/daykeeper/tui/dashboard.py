@@ -134,7 +134,7 @@ class DashboardScreen(Screen):
         left.append(f" {t['done']}/{t['total']} задач  ")
         left.append_text(w.bar(frac, max(6, col - 24)))
         left.append(f"  {round(frac * 100)}%\n")
-        left.append(f" {fmt_duration(t['focus_s'])} фокуса · {t['pomodoros']}🍅\n")
+        left.append(f" {fmt_duration(t['focus_s'])} фокуса · {t['pomodoros']}{w.POMODORO}\n")
         if t["next_timed"]:
             left.append(" дальше: ")
             left.append(t["next_timed"]["start"], style=w.ACCENT)
@@ -168,7 +168,7 @@ class DashboardScreen(Screen):
                         left.append("■", style=w.OK)
                     else:
                         left.append("□", style=w.BAD)
-                left.append(f"  🔥{h['streak']}\n", style=w.BRIGHT if h["streak"] else w.MUTED)
+                left.append(f"  {w.FIRE}{h['streak']}\n", style=w.BRIGHT if h["streak"] else w.MUTED)
 
         week = data["week"]
         right.append_text(_section("ФОКУС ЗА НЕДЕЛЮ"))

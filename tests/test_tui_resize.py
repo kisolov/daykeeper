@@ -90,3 +90,25 @@ async def test_key_hints_wrap_in_narrow_window(svc):
         assert max(widths(footer)) <= 36
         for word in ("стоп", "завершить день", "выйти"):
             assert word in footer
+
+
+def _no_wide(text: str) -> list[str]:
+    return [ch for ch in text if Text(ch).cell_len > 1]
+
+
+async def test_no_emoji_in_today_or_summary(svc):
+    app = DaykeeperApp(FakeBackend(svc))
+    async with app.run_test(size=(80, 30)) as pilot:
+        await pilot.pause()
+        assert _no_wide(app.screen.list_text()) == []
+        await pilot.press("e")
+        await pilot.pause()
+        assert _no_wide(app.screen.body_text()) == []
+
+
+async def test_no_emoji_on_dashboard(svc):
+    svc.call("habit_add", title="зарядка")
+    app = DaykeeperApp(FakeBackend(svc), start_screen="dash")
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        assert _no_wide(app.screen.dash_text()) == []

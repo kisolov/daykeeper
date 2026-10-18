@@ -8,6 +8,7 @@ from daykeeper.service import Service
 from daykeeper.tui.app import DaykeeperApp
 from daykeeper.tui.dashboard import DashboardScreen
 from daykeeper.tui.summary import SummaryScreen
+from daykeeper.tui.widgets import FIRE
 
 from .tui_backend import FakeBackend
 
@@ -63,7 +64,7 @@ async def test_dashboard_with_data(svc, clock):
         text = app.screen.dash_text()
         habit_line = next(line for line in text.splitlines() if "зарядка" in line)
         assert habit_line.count("■") + habit_line.count("□") + habit_line.count("·") >= 14
-        assert "🔥3" in habit_line
+        assert f"{FIRE}3" in habit_line
         assert "от темпа" in text and "бот 20ч" in text
         assert "сон" in text and "7.5" in text
         assert "» зарядка — 3 дня подряд, новый рекорд" in text

@@ -1,0 +1,31 @@
+[project]
+name = "daykeeper"
+version = "0.1.0"
+description = "Личный планировщик дня с pomodoro"
+readme = "README.md"
+authors = [
+    { name = "kisolov", email = "Alekskiss2@ya.ru" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp>=2.3.0",
+    "textual>=8.2.8",
+]
+
+[project.scripts]
+daykeeper = "daykeeper:main"
+
+[build-system]
+requires = ["uv_build>=0.12.11,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

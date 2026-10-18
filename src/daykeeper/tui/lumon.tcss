@@ -1,0 +1,40 @@
+/* Lumon palette — matches ~/.config/waybar/style.css */
+Screen {
+    background: #0f1a24;
+    color: #cfe6f2;
+    padding: 1 2;
+}
+
+#header, #timer, #list, #footer, #summary, #dash {
+    width: auto;
+    height: auto;
+    background: #0f1a24;
+}
+
+#timer {
+    margin-bottom: 0;
+}
+
+#list {
+    min-height: 1;
+}
+
+#footer {
+    margin-top: 0;
+}
+
+Input#quick {
+    width: 52;
+    background: #142230;
+    color: #f2fcff;
+    border: tall #4A6B80;
+}
+
+Input#quick:focus {
+    border: tall #6fb8e3;
+}
+
+Toast {
+    background: #1b2d40;
+    color: #f2fcff;
+}

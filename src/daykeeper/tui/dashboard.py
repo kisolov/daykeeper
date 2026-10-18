@@ -15,7 +15,7 @@ from ..stats import fmt_duration
 from . import widgets as w
 
 SPARK = "▁▂▃▄▅▆▇█"
-COL = 40
+TWO_COLUMNS_FROM = 84  # usable columns at which the dashboard splits into two
 
 
 def _section(title: str, extra: str = "") -> Text:
@@ -63,6 +63,8 @@ class DashboardScreen(Screen):
         super().__init__()
         self.backend = backend
         self.anchor: date | None = None
+        self.data: dict | None = None
+        self.two_columns = False
         self._plain = ""
 
     def compose(self) -> ComposeResult:
@@ -81,6 +83,22 @@ class DashboardScreen(Screen):
     def live(self, state: dict) -> None:
         pass
 
+    def on_resize(self) -> None:
+        if self.data is not None:
+            self._show(*self._build(self.data))
+
+    def _layout(self) -> tuple[int, int]:
+        """(total width, column width) for the current window; also flips the column layout."""
+        width = max(30, self.app.size.width - 4)
+        self.two_columns = width >= TWO_COLUMNS_FROM
+        col = (width - 4) // 2 if self.two_columns else width
+        cols = self.query_one("#dash-cols")
+        cols.styles.layout = "horizontal" if self.two_columns else "vertical"
+        for wid in ("#dash-left", "#dash-right"):
+            self.query_one(wid, Static).styles.width = col
+        self.query_one("#dash-left", Static).styles.margin = (0, 4, 0, 0) if self.two_columns else (0, 0, 1, 0)
+        return width, col
+
     def reload(self) -> None:
         try:
             data = self.backend.call("dashboard", day=self.anchor.isoformat() if self.anchor else None)
@@ -92,6 +110,7 @@ class DashboardScreen(Screen):
             return
         if self.anchor is None:
             self.anchor = date.fromisoformat(data["today"]["day"])
+        self.data = data
         self._show(*self._build(data))
 
     def _show(self, head: Text, left: Text, right: Text, foot: Text) -> None:
@@ -103,33 +122,34 @@ class DashboardScreen(Screen):
 
     def _build(self, data: dict) -> tuple[Text, Text, Text, Text]:
         d = self.anchor
+        width, col = self._layout()
         head = Text.assemble(("ДАШБОРД", f"bold {w.BRIGHT}"),
                              (f" · неделя {d.isocalendar().week} · {w.WEEKDAYS[d.weekday()]} {d.day} {w.MONTHS[d.month - 1]}", w.MUTED),
-                             "\n", ("═" * (COL * 2 + 4), w.MUTED))
+                             "\n", ("═" * width, w.MUTED))
         left, right = Text(), Text()
 
         t = data["today"]
         left.append_text(_section("СЕГОДНЯ"))
         frac = t["done"] / t["total"] if t["total"] else 0
         left.append(f" {t['done']}/{t['total']} задач  ")
-        left.append_text(w.bar(frac, 16))
+        left.append_text(w.bar(frac, max(6, col - 24)))
         left.append(f"  {round(frac * 100)}%\n")
         left.append(f" {fmt_duration(t['focus_s'])} фокуса · {t['pomodoros']}🍅\n")
         if t["next_timed"]:
             left.append(" дальше: ")
             left.append(t["next_timed"]["start"], style=w.ACCENT)
-            left.append(f" {t['next_timed']['title']}\n")
+            left.append(f" {w.fit(t['next_timed']['title'], col - 16)}\n")
         left.append("\n")
 
         if data["goals"]:
             left.append_text(_section("ЦЕЛИ"))
             for g in data["goals"]:
-                left.append(f" {g['title']}\n")
+                left.append(f" {w.fit(g['title'], col - 1)}\n")
                 frac = (g["value"] or 0) / g["target"] if g["target"] and g["kind"] != "tracker" else 0
                 if g["kind"] == "tracker" and g["start"] is not None and g["value"] is not None and g["start"] != g["target"]:
                     frac = (g["start"] - g["value"]) / (g["start"] - g["target"])
                 left.append("   ")
-                left.append_text(w.bar(frac, 18))
+                left.append_text(w.bar(frac, max(6, col - 26)))
                 left.append(f" {_goal_value(g, g['value'])}")
                 if g["behind"]:
                     left.append(f"  {_goal_delta(g)} от темпа", style=w.WARN)
@@ -139,7 +159,8 @@ class DashboardScreen(Screen):
         if data["habits"]:
             left.append_text(_section("ПРИВЫЧКИ", "14 дней"))
             for h in data["habits"]:
-                left.append(f" {h['title'][:16]:<16} ")
+                name_w = max(6, min(24, col - 24))
+                left.append(f" {w.fit(h['title'], name_w):<{name_w}} ")
                 for mark in h["grid"]:
                     if mark is None:
                         left.append("·", style=w.MUTED)
@@ -152,10 +173,11 @@ class DashboardScreen(Screen):
         week = data["week"]
         right.append_text(_section("ФОКУС ЗА НЕДЕЛЮ"))
         peak = max((x["focus_s"] for x in week["days"]), default=0) or 1
+        span = max(6, col - 14)
         for i, x in enumerate(week["days"]):
-            n = round(x["focus_s"] / peak * 12)
+            n = round(x["focus_s"] / peak * span)
             right.append(f" {w.WEEKDAYS[i]} ")
-            right.append(("█" * n).ljust(12) if n else "·".ljust(12), style=w.ACCENT if n else w.MUTED)
+            right.append(("█" * n).ljust(span) if n else "·".ljust(span), style=w.ACCENT if n else w.MUTED)
             right.append(f" {fmt_duration(x['focus_s']) if x['focus_s'] else '0'}\n")
         arrow = "▲" if week["total_s"] > week["prev_total_s"] else "▼" if week["total_s"] < week["prev_total_s"] else "="
         right.append(f" итого {fmt_duration(week['total_s'])} · прошлая {fmt_duration(week['prev_total_s'])} ", style=w.MUTED)
@@ -169,10 +191,10 @@ class DashboardScreen(Screen):
                 right.append_text(_spark(tr["series"]))
                 right.append("\n")
 
-        foot = Text("═" * (COL * 2 + 4) + "\n", style=w.MUTED)
+        foot = Text("═" * width + "\n", style=w.MUTED)
         if data["motivation"]:
             foot.append("» ", style=w.ACCENT)
-            foot.append(data["motivation"] + "\n")
+            foot.append(w.fit(data["motivation"], width - 2) + "\n")
         foot.append_text(w.keys_hint([("←/→", "неделя"), ("t", "сегодня"), ("q", "назад")]))
         return head, left, right, foot
 

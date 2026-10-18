@@ -38,7 +38,17 @@ def task_meta(task: dict) -> str:
     return f"{task['pomodoros']}🍅"
 
 
+def fit(text: str, cells: int) -> str:
+    """Cut to at most `cells` terminal cells, ending with … when cut."""
+    t = Text(text)
+    if t.cell_len <= cells:
+        return text
+    t.truncate(max(1, cells), overflow="ellipsis")
+    return t.plain
+
+
 def task_row(task: dict, selected: bool, width: int = WIDTH) -> Text:
+    """Exactly `width` cells: marker, optional time, title (cut with …), meta pinned right."""
     row = Text()
     row.append("›" if selected else " ", style=ACCENT)
     if task["running"]:
@@ -50,10 +60,11 @@ def task_row(task: dict, selected: bool, width: int = WIDTH) -> Text:
     row.append(" ")
     if task["kind"] == "timed":
         row.append(time_span(task["start"], task["end"]) + " ", style=ACCENT if selected else MUTED)
-    row.append(task["title"], style=MUTED if task["done"] else FG)
     meta = task_meta(task)
-    gap = max(2, width - row.cell_len - Text(meta).cell_len)
-    row.append(" " * gap)
+    meta_len = Text(meta).cell_len
+    room = width - row.cell_len - meta_len - 2
+    row.append(fit(task["title"], room), style=MUTED if task["done"] else FG)
+    row.append(" " * max(2, width - row.cell_len - meta_len))
     row.append(meta, style=MUTED)
     return row
 
@@ -68,18 +79,19 @@ def clock(seconds: int) -> str:
     return f"{m:02d}:{s:02d}"
 
 
-def timer_panel(t: dict) -> Text:
+def timer_panel(t: dict, width: int = WIDTH) -> Text:
     phase = "работа" if t["phase"] == "work" else "отдых"
+    info = f"  · помидор {t['pomodoro_no']} из {t['pomodoro_total']} · {phase}" + ("" if t["running"] else " · пауза")
     out = Text()
-    out.append(f"  {t['title']}", style=ACCENT)
-    out.append(f"  · помидор {t['pomodoro_no']} из {t['pomodoro_total']} · {phase}", style=MUTED)
+    out.append("  " + fit(t["title"], max(8, width - Text(info).cell_len - 2)), style=ACCENT)
+    out.append(info.replace(" · пауза", ""), style=MUTED)
     if not t["running"]:
         out.append(" · пауза", style=WARN)
     out.append("\n\n")
-    out.append(f"          {clock(t['remaining_s'])}\n", style=f"bold {BRIGHT}")
+    out.append(" " * max(0, (width - 5) // 2) + f"{clock(t['remaining_s'])}\n", style=f"bold {BRIGHT}")
     done = t["phase_s"] - t["remaining_s"]
     out.append("  ")
-    out.append_text(bar(done / t["phase_s"] if t["phase_s"] else 0))
+    out.append_text(bar(done / t["phase_s"] if t["phase_s"] else 0, max(10, min(60, width - 12))))
     out.append(f"  {done // 60}/{t['phase_s'] // 60}\n", style=MUTED)
     if t["next"]:
         steps = " → ".join(f"{'работа' if p['kind'] == 'work' else 'отдых'} {p['minutes']}м" for p in t["next"][:2])
@@ -92,11 +104,19 @@ def rule(width: int = WIDTH) -> Text:
     return Text("─" * width, style=MUTED)
 
 
-def keys_hint(pairs: list[tuple[str, str]]) -> Text:
+def keys_hint(pairs: list[tuple[str, str]], width: int | None = None) -> Text:
+    """`key label` pairs separated by two spaces, wrapped between pairs to fit `width`."""
     out = Text()
-    for i, (key, label) in enumerate(pairs):
-        if i:
-            out.append("  ")
-        out.append(key, style=MUTED)
-        out.append(f" {label}")
+    line_len = 0
+    for key, label in pairs:
+        item = Text.assemble((key, MUTED), f" {label}")
+        if line_len:
+            if width is not None and line_len + 2 + item.cell_len > width:
+                out.append("\n")
+                line_len = 0
+            else:
+                out.append("  ")
+                line_len += 2
+        out.append_text(item)
+        line_len += item.cell_len
     return out

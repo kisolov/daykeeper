@@ -43,13 +43,8 @@ Toast {
     height: auto;
 }
 
-#dash-left {
-    width: 46;
-    height: auto;
-}
-
-#dash-right {
-    width: 40;
+/* widths are set from the window size in DashboardScreen._layout */
+#dash-left, #dash-right {
     height: auto;
 }
 

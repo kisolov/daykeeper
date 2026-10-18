@@ -135,10 +135,19 @@ class TodayScreen(Screen):
         self._put("timer", "")
         self._put("footer", w.keys_hint([("q", "выйти")]))
 
+    def _width(self) -> int:
+        """Usable columns inside the screen padding; everything is laid out to this."""
+        return max(28, self.app.size.width - 4)
+
+    def on_resize(self) -> None:
+        if self.data and not self.down:
+            self._draw()
+
     def _render_timer(self) -> None:
         panel = self.query_one("#timer", Static)
+        width = self._width()
         if self.timer:
-            self._put("timer", Text.assemble(w.timer_panel(self.timer), "\n", w.rule()))
+            self._put("timer", Text.assemble(w.timer_panel(self.timer, width), "\n", w.rule(width)))
             panel.display = True
         else:
             self._put("timer", "")
@@ -146,22 +155,26 @@ class TodayScreen(Screen):
 
     def _draw(self) -> None:
         d = self.data
-        left = Text.assemble((w.human_day(self.day, self.today).split(" · ")[0], f"bold {w.BRIGHT}"),
-                             (" · " + w.human_day(self.day, self.today).split(" · ")[1], w.MUTED))
+        width = self._width()
+        label, date_part = w.human_day(self.day, self.today).split(" · ")
+        left = Text.assemble((label, f"bold {w.BRIGHT}"), (" · " + date_part, w.MUTED))
         right = f"{d['done']}/{d['total']} · {fmt_duration(d['focus_s'])} фокуса"
-        gap = max(2, w.WIDTH - left.cell_len - len(right))
-        self._put("header", Text.assemble(left, " " * gap, (right, w.MUTED), "\n", w.rule()))
+        if left.cell_len + 2 + len(right) > width:
+            right = f"{d['done']}/{d['total']}"
+        gap = max(2, width - left.cell_len - len(right))
+        self._put("header", Text.assemble(left, " " * gap, (right, w.MUTED), "\n", w.rule(width)))
         self._render_timer()
         if self.tasks:
-            rows = Text("\n").join(w.task_row(t, i == self.cursor) for i, t in enumerate(self.tasks))
+            rows = Text("\n").join(w.task_row(t, i == self.cursor, width) for i, t in enumerate(self.tasks))
         else:
             rows = Text(EMPTY, style=w.MUTED)
         self._put("list", rows)
         hints = [("p", "пауза"), ("n", "пропустить"), ("x", "стоп")] if self.timer else [("enter", "таймер")]
         self._put("footer", Text.assemble(
-            w.rule(), "\n",
-            w.keys_hint([("space", "отметить"), *hints, ("a", "добавить")]), "\n",
-            w.keys_hint([("J/K", "переставить"), ("[ ]", "день"), ("e", "завершить день"), ("d", "дашборд"), ("q", "выйти")]),
+            w.rule(width), "\n",
+            w.keys_hint([("space", "отметить"), *hints, ("a", "добавить")], width), "\n",
+            w.keys_hint([("J/K", "переставить"), ("[ ]", "день"), ("e", "завершить день"), ("d", "дашборд"),
+                         ("q", "выйти")], width),
         ))
 
     # --- actions ---------------------------------------------------------

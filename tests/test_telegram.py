@@ -105,3 +105,17 @@ def test_notification_payload(bot):
     method, payload = b.notification("пора: код", "09:00–10:00", {"start:3": "▶ Запустить", "done:3": "✓ Сделано"})
     assert method == "sendMessage" and payload["text"] == "пора: код\n09:00–10:00"
     assert [btn["callback_data"] for btn in payload["reply_markup"]["inline_keyboard"][0]] == ["start:3", "done:3"]
+
+
+def test_token_never_logged(bot):
+    b, _ = bot
+    assert b.redact("POST https://api.telegram.org/bottoken/getUpdates failed") == \
+        "POST https://api.telegram.org/bot<token>/getUpdates failed"
+
+
+def test_httpx_logging_is_quiet():
+    import logging
+
+    from daykeeper.daemon import configure_logging
+    configure_logging()
+    assert logging.getLogger("httpx").getEffectiveLevel() >= logging.WARNING

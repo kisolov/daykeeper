@@ -79,3 +79,24 @@ def test_client_daemon_down(tmp_path):
 async def test_async_client_daemon_down(tmp_path):
     with pytest.raises(DaemonDown):
         await Client(tmp_path / "no.sock").acall("day_get")
+
+
+async def test_stalled_subscriber_does_not_block_publish(server):
+    svc, srv, _ = server
+
+    class Stalled:
+        closed = False
+
+        def write(self, data):
+            pass
+
+        async def drain(self):
+            await asyncio.sleep(3600)
+
+        def close(self):
+            self.closed = True
+
+    stalled = Stalled()
+    srv.subscribers.add(stalled)
+    await asyncio.wait_for(srv.publish(), 3)
+    assert stalled not in srv.subscribers and stalled.closed

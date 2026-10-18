@@ -42,3 +42,9 @@ def test_strips_whitespace():
 def test_bad(bad):
     with pytest.raises(ValueError):
         parse_quick_add(bad)
+
+
+@pytest.mark.parametrize("bad", ["25:00", "09:00 встреча", "встреча 09:00-10:00", "созвон в 9:30"])
+def test_stray_time_is_rejected(bad):
+    with pytest.raises(ValueError, match="время|нет такого"):
+        parse_quick_add(bad)

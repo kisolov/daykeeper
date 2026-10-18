@@ -15,6 +15,7 @@ from pathlib import Path
 from .service import Service, ServiceError
 
 DOWN_MESSAGE = "демон не запущен (systemctl --user start daykeeper)"
+DRAIN_TIMEOUT_S = 1.0
 
 
 class DaemonDown(Exception):
@@ -66,9 +67,11 @@ class RpcServer:
         for w in list(self.subscribers):
             try:
                 w.write(line)
-                await w.drain()
-            except (ConnectionError, RuntimeError):
+                await asyncio.wait_for(w.drain(), DRAIN_TIMEOUT_S)
+            except (ConnectionError, RuntimeError, TimeoutError):
+                # a suspended TUI / stuck waybar must not stall the daemon's tick loop
                 self.subscribers.discard(w)
+                w.close()
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:

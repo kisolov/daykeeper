@@ -103,6 +103,13 @@ class Daemon:
         return [self.bot.run()] if self.bot else []
 
 
-def run_daemon(cfg: Config) -> None:
+def configure_logging() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    # httpx logs every request URL at INFO, and Telegram URLs contain the bot token
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+
+def run_daemon(cfg: Config) -> None:
+    configure_logging()
     asyncio.run(Daemon(cfg).run())

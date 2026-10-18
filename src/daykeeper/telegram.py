@@ -104,5 +104,8 @@ class TelegramBot:
             except asyncio.CancelledError:
                 raise
             except Exception as e:
-                log.warning("telegram: %s", e)
+                log.warning("telegram: %s", self.redact(str(e)))
                 await asyncio.sleep(5)
+
+    def redact(self, text: str) -> str:
+        return text.replace(self.token, "<token>") if self.token else text

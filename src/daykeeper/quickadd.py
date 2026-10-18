@@ -4,6 +4,7 @@ import re
 from datetime import time
 
 _TIMED = re.compile(r"^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})(?:\s+(.*))?$")
+_STRAY_TIME = re.compile(r"\b\d{1,2}:\d{2}\b")
 _DURATION = re.compile(r"^(?:(.*?)\s+)?(?:(\d+)\s*ч)?\s*(?:(\d+)\s*м)?$")
 
 
@@ -30,6 +31,8 @@ def parse_quick_add(text: str) -> dict:
         if end <= start:
             raise ValueError("конец раньше начала")
         return _result(m[5], "timed", start=start, end=end)
+    if _STRAY_TIME.search(text):
+        raise ValueError("время задаётся интервалом в начале: 09:00-10:00 встреча")
     m = _DURATION.match(text)
     if m and (m[2] or m[3]):
         minutes = int(m[2] or 0) * 60 + int(m[3] or 0)

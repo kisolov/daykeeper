@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from daykeeper.config import Config
-from daykeeper.models import Segment
+from daykeeper.models import Segment, Task
 from daykeeper.service import Service
 from daykeeper.tui.app import DaykeeperApp
 from daykeeper.tui.dashboard import DashboardScreen
@@ -45,9 +45,9 @@ async def test_dashboard_empty(svc):
 async def test_dashboard_with_data(svc, clock):
     h = svc.call("habit_add", title="зарядка")
     for i in range(1, 4):
-        day = (date(2026, 10, 18) - timedelta(days=i)).isoformat()
-        tid = svc.call("day_get", day=day)["tasks"][0]["id"]
-        svc.call("task_done", task_id=tid)
+        day = date(2026, 10, 18) - timedelta(days=i)
+        task = svc.repo.insert_task(Task(None, day, "зарядка", "check", habit_id=h["id"]), None)
+        svc.call("task_done", task_id=task.id)
     t = svc.call("task_add", title="бот", kind="duration", duration_min=60, tag="bot")
     svc.repo.add_segment(Segment(t["id"], date(2026, 10, 18), datetime(2026, 10, 18, 8), datetime(2026, 10, 18, 9), 3600, True))
     svc.call("goal_add", title="бот 20ч", kind="focus_tag", target=20, tag="bot", period="week")

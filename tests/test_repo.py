@@ -175,3 +175,17 @@ def test_timer_roundtrip(db):
     assert r.load_timer() == st
     r.save_timer(None)
     assert r.load_timer() is None
+
+
+def test_move_to_other_day_keeps_id_and_segments(db):
+    r = Repo(db)
+    a = r.insert_task(T("a", "duration", duration_min=60, tag="bot"), None)
+    r.insert_task(T("b"), None)
+    r.add_segment(Segment(a.id, D, datetime(2026, 10, 18, 9), datetime(2026, 10, 18, 9, 10), 600, False))
+    tomorrow = date(2026, 10, 19)
+    r.insert_task(Task(None, tomorrow, "утро", "timed", start=time(9), end=time(10)), None)
+    moved = r.update_task(a.id, day=tomorrow)
+    assert moved.id == a.id and moved.day == tomorrow
+    assert [t.title for t in r.tasks(tomorrow)] == ["утро", "a"]
+    assert [(t.title, t.position) for t in r.tasks(D)] == [("b", 0)]
+    assert r.segments(D, D)[0].task_id == a.id

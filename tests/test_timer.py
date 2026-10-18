@@ -212,3 +212,15 @@ def test_timed_task_uses_interval(env):
     t = repo.insert_task(Task(None, D, "w", "timed", start=time(9), end=time(10, 30)), None)
     timer.start(t.id)
     assert [p.minutes for p in timer.state.phases] == [47, 13, 30]
+
+
+def test_restore_with_missing_task_clears_state(env, clock):
+    repo, timer, _ = env
+    t = add(repo, 60)
+    timer.start(t.id)
+    repo.con.execute("PRAGMA foreign_keys = OFF")
+    repo.con.execute("DELETE FROM tasks WHERE id=?", (t.id,))
+    repo.con.commit()
+    fresh = Timer(repo, Config(), clock)
+    fresh.restore()
+    assert fresh.state is None and repo.load_timer() is None

@@ -124,20 +124,22 @@ class Repo:
             new = replace(new, duration_min=None)
         validate_task(new)
         if new.day != old.day:
-            with self.con:
-                self.con.execute("DELETE FROM tasks WHERE id=?", (task_id,))
-                self._write_order(self.tasks(old.day))
-            moved = self.insert_task(replace(new, id=None), None)
-            return moved
-        tasks = [new if t.id == task_id else t for t in self.tasks(old.day)]
-        settled = ordering.settle(tasks, task_id)
+            target = self.tasks(new.day)
+            index = ordering.insert_index(target, new)
+            new_order = target[:index] + [new] + target[index:]
+            old_order = [t for t in self.tasks(old.day) if t.id != task_id]
+        else:
+            new_order = ordering.settle([new if t.id == task_id else t for t in self.tasks(old.day)], task_id)
+            old_order = None
         with self.con:
             self.con.execute(
-                'UPDATE tasks SET title=?, kind=?, start=?, "end"=?, duration_min=?, tag=?, habit_id=? WHERE id=?',
-                (new.title.strip(), new.kind, _iso(new.start), _iso(new.end), new.duration_min,
-                 new.tag, new.habit_id, task_id),
+                'UPDATE tasks SET day=?, title=?, kind=?, start=?, "end"=?, duration_min=?, tag=?, habit_id=? WHERE id=?',
+                (new.day.isoformat(), new.title.strip(), new.kind, _iso(new.start), _iso(new.end),
+                 new.duration_min, new.tag, new.habit_id, task_id),
             )
-            self._write_order(settled)
+            self._write_order(new_order)
+            if old_order is not None:
+                self._write_order(old_order)
         return self.task(task_id)
 
     def delete_task(self, task_id: int) -> None:

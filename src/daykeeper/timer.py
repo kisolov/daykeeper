@@ -53,6 +53,18 @@ class Timer:
 
     # --- internals -------------------------------------------------------
 
+    def _alive(self) -> bool:
+        """Drop a timer whose task no longer exists; True when a usable timer remains."""
+        if self.state is None:
+            return False
+        try:
+            self.repo.task(self.state.task_id)
+        except KeyError:
+            self.state = None
+            self.repo.save_timer(None)
+            return False
+        return True
+
     def _save(self) -> None:
         self.repo.save_timer(self.state)
         if self.state is not None:
@@ -96,7 +108,7 @@ class Timer:
             raise TimerError("для галочки таймер не нужен")
         if task.done:
             raise TimerError("задача уже сделана")
-        if self.state is not None:
+        if self._alive():
             if self.state.task_id == task_id:
                 if not self.state.running:
                     self.resume()
@@ -111,7 +123,7 @@ class Timer:
         return []
 
     def pause(self) -> None:
-        if self.state is None or not self.state.running:
+        if not self._alive() or not self.state.running:
             return
         self._record(self.clock(), completed=False)
         self.state.running = False
@@ -119,7 +131,7 @@ class Timer:
         self._save()
 
     def resume(self) -> None:
-        if self.state is None or self.state.running:
+        if not self._alive() or self.state.running:
             return
         self.state.running = True
         self.state.resumed_at = self.clock()
@@ -131,14 +143,14 @@ class Timer:
         self.pause() if self.state.running else self.resume()
 
     def stop(self) -> None:
-        if self.state is None:
+        if not self._alive():
             return
         self.pause()
         self.state = None
         self.repo.save_timer(None)
 
     def skip(self) -> list[Event]:
-        if self.state is None:
+        if not self._alive():
             return []
         now = self.clock()
         self._record(now, completed=False)
@@ -149,6 +161,8 @@ class Timer:
     def tick(self) -> list[Event]:
         events: list[Event] = []
         now = self.clock()
+        if not self._alive():
+            return events
         while self.state is not None and self.state.running:
             left = self._phase_s() - self._elapsed(now)
             if left > 0:
@@ -162,7 +176,7 @@ class Timer:
 
     def restore(self) -> None:
         """After a daemon restart: bank time up to now (capped at the phase end) and pause."""
-        if self.state is None or not self.state.running:
+        if not self._alive() or not self.state.running:
             return
         st = self.state
         phase_end = st.resumed_at + timedelta(seconds=self._phase_s() - st.phase_elapsed_s)

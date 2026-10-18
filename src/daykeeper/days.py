@@ -15,15 +15,17 @@ class Days:
         self.clock = clock
 
     def ensure(self, day: date) -> None:
+        """Spawn habits into `day` (today or later only) and auto-close days before the real today."""
+        today = self.clock().date()
         row = self.repo.day_row(day)
-        if not row or not row["spawned"]:
+        if day >= today and (not row or not row["spawned"]):
             for habit in self.repo.habits(active_only=True):
                 if day.weekday() in habit.weekdays:
                     self.repo.insert_task(
                         Task(None, day, habit.title, "check", tag=habit.tag, habit_id=habit.id), len(self.repo.tasks(day))
                     )
             self.repo.upsert_day(day, spawned=1)
-        self._autoclose_before(day)
+        self._autoclose_before(min(day, today))
 
     def _autoclose_before(self, day: date) -> None:
         rows = self.repo.con.execute(

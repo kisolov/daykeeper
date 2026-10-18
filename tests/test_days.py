@@ -97,3 +97,19 @@ def test_mark_seen_covers_older_days(db, clock):
     assert days.pending_summary()[0] == date(2026, 10, 17)
     days.mark_seen(date(2026, 10, 17))
     assert days.pending_summary() is None
+
+
+def test_looking_at_tomorrow_does_not_close_today(db, clock):
+    repo, days, calls = make(db, clock)
+    repo.insert_task(Task(None, SUN, "сегодня", "check"), None)
+    days.ensure(MON)
+    assert (repo.day_row(SUN) or {}).get("closed", 0) == 0
+    assert calls == []
+
+
+def test_past_day_does_not_spawn_habits(db, clock):
+    repo, days, _ = make(db, clock)
+    repo.add_habit(Habit(None, "зарядка"))
+    days.ensure(date(2026, 10, 10))
+    assert repo.tasks(date(2026, 10, 10)) == []
+    assert days.pending_summary() is None

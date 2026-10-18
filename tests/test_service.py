@@ -148,3 +148,50 @@ def test_dashboard_for_other_week(svc):
     d = svc.call("dashboard", day="2026-10-08")
     assert d["week"]["start"] == "2026-10-05"
     assert svc.call("dashboard")["week"]["start"] == "2026-10-12"
+
+
+def test_move_paused_task_to_tomorrow_keeps_work(svc, clock):
+    t = svc.call("task_quick_add", text="код 1ч")
+    svc.call("task_quick_add", text="зубы")  # make the moved task not the highest id
+    svc.call("timer_start", task_id=t["id"])
+    clock.advance(600)
+    svc.call("timer_pause")
+    moved = svc.call("task_update", task_id=t["id"], day="2026-10-19")
+    assert moved["id"] == t["id"]
+    assert svc.call("timer_status") is None
+    assert svc.call("stats_range", start="2026-10-18", end="2026-10-19")["total_s"] == 600
+    svc.tick()
+    svc.live_state()
+
+
+def test_shortening_running_task_stops_timer(svc, clock):
+    t = svc.call("task_quick_add", text="код 1ч")
+    svc.call("timer_start", task_id=t["id"])
+    clock.advance(60)
+    svc.call("task_update", task_id=t["id"], duration_min=30)
+    assert svc.call("timer_status") is None
+    svc.call("timer_start", task_id=t["id"])
+    assert svc.call("timer_status")["remaining_s"] <= 30 * 60
+
+
+def test_retitle_running_task_keeps_timer(svc):
+    t = svc.call("task_quick_add", text="код 1ч")
+    svc.call("timer_start", task_id=t["id"])
+    svc.call("task_update", task_id=t["id"], title="код бота")
+    assert svc.call("timer_status")["title"] == "код бота"
+
+
+def test_tick_spawns_habits_at_midnight(svc, clock):
+    svc.call("habit_add", title="зарядка")
+    clock.set(datetime(2026, 10, 19, 0, 0, 5))
+    svc.tick()
+    assert [t.title for t in svc.repo.tasks(date(2026, 10, 19))] == ["зарядка"]
+    assert svc.live_state()["today"] == "2026-10-19"
+
+
+def test_live_state_version_bumps_on_change(svc):
+    v0 = svc.live_state()["version"]
+    svc.call("task_quick_add", text="зубы")
+    assert svc.live_state()["version"] > v0
+    svc.call("day_get")
+    assert svc.live_state()["version"] == v0 + 1

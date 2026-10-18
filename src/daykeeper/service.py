@@ -71,6 +71,8 @@ class Service:
         self.timer = Timer(self.repo, cfg, clock)
         self.on_event: Callable[[list[Event]], None] = lambda events: None
         self.on_change: Callable[[], None] = lambda: None
+        self.version = 0
+        self._last_day = self.today()
 
     # --- dispatch --------------------------------------------------------
 
@@ -92,8 +94,12 @@ class Service:
         except (OrderError, TimerError, ValueError) as e:
             raise ServiceError("invalid", str(e))
         if method not in READ_ONLY:
-            self.on_change()
+            self._changed()
         return result
+
+    def _changed(self) -> None:
+        self.version += 1
+        self.on_change()
 
     def today(self) -> date:
         return self.clock().date()
@@ -107,10 +113,18 @@ class Service:
         return events
 
     def tick(self) -> list[Event]:
+        changed = False
+        today = self.today()
+        if today != self._last_day:
+            self._last_day = today
+            self.days.ensure(today)
+            changed = True
         events = self.timer.tick()
         if events:
             self._emit(events)
-            self.on_change()
+            changed = True
+        if changed:
+            self._changed()
         return events
 
     # --- views -----------------------------------------------------------
@@ -157,10 +171,13 @@ class Service:
             fields["end"] = _time(fields["end"])
         if "day" in fields:
             fields["day"] = _date(fields["day"])
-        updated = self.repo.update_task(task_id, **fields)
-        if self.timer.state and self.timer.state.task_id == task_id and updated.id != task_id:
+        reshapes = {"kind", "start", "end", "duration_min", "day"} & set(fields)
+        if reshapes and self.timer.state and self.timer.state.task_id == task_id:
+            self.repo.task(task_id)
             self.timer.stop()
-        return self._task_view(updated)
+            if reshapes - {"day"}:
+                self.repo.save_progress(task_id, 0, 0)
+        return self._task_view(self.repo.update_task(task_id, **fields))
 
     def task_delete(self, task_id) -> None:
         if self.timer.state and self.timer.state.task_id == task_id:
@@ -334,6 +351,8 @@ class Service:
         now = self.clock().time().replace(second=0, microsecond=0)
         upcoming = [t for t in tasks if t.kind == "timed" and not t.done and t.start >= now]
         return {
+            "today": today.isoformat(),
+            "version": self.version,
             "timer": self.timer_status(),
             "day": {
                 "done": sum(t.done for t in tasks), "total": len(tasks),

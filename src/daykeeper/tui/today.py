@@ -8,7 +8,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Input, Static
 
-from ..rpc import DaemonDown
+from ..rpc import DOWN_MESSAGE, DaemonDown
 from ..service import ServiceError
 from ..stats import fmt_duration
 from . import widgets as w
@@ -49,6 +49,7 @@ class TodayScreen(Screen):
         self.cursor = 0
         self.down = False
         self._shown: dict[str, str] = {}
+        self._version: int | None = None
 
     def compose(self) -> ComposeResult:
         yield Static(id="header")
@@ -94,13 +95,23 @@ class TodayScreen(Screen):
         self._draw()
 
     def live(self, state: dict) -> None:
-        """Push from the daemon: timer ticks and changes made elsewhere."""
-        before = (self.data.get("done"), self.data.get("total"), bool(self.timer))
+        """Push from the daemon: timer ticks, changes made elsewhere, a new day after midnight."""
         self.timer = state["timer"]
-        if (state["day"]["done"], state["day"]["total"], bool(self.timer)) != before or self.down:
+        new_today = date.fromisoformat(state["today"])
+        if self.today is not None and new_today != self.today:
+            if self.day == self.today:
+                self.day = new_today
+            self.today = new_today
+            self._version = None
+        if self.down or state["version"] != self._version:
+            self._version = state["version"]
             self.reload()
         else:
             self._render_timer()
+
+    def live_down(self) -> None:
+        self.down = True
+        self._render_down(DOWN_MESSAGE)
 
     # --- rendering -------------------------------------------------------
 
@@ -225,11 +236,15 @@ class TodayScreen(Screen):
             self.reload()
 
     def action_end_day(self) -> None:
+        if self.day is None:
+            return
         summary = self._call("day_close", day=self.day.isoformat())
         if summary is not None:
             from .summary import SummaryScreen
             self.app.push_screen(SummaryScreen(self.day.isoformat(), summary))
 
     def action_dashboard(self) -> None:
+        if self.down:
+            return
         from .dashboard import DashboardScreen
         self.app.push_screen(DashboardScreen(self.backend))

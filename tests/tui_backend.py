@@ -30,3 +30,22 @@ class DownBackend:
     async def subscribe(self):
         raise DaemonDown()
         yield  # pragma: no cover
+
+
+class FlakyBackend(FakeBackend):
+    """Down until `up` is set, like a daemon that starts after the TUI."""
+
+    def __init__(self, svc):
+        super().__init__(svc)
+        self.up = False
+
+    def call(self, method, **params):
+        if not self.up:
+            raise DaemonDown()
+        return super().call(method, **params)
+
+    async def subscribe(self):
+        if not self.up:
+            raise DaemonDown()
+        async for state in super().subscribe():
+            yield state

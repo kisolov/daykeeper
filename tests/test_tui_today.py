@@ -167,3 +167,52 @@ async def test_daemon_down():
     async with app.run_test() as pilot:
         await pilot.pause()
         assert "демон не запущен" in today(app).header_text()
+
+
+async def test_end_day_when_daemon_down_does_not_crash():
+    app = DaykeeperApp(DownBackend())
+    async with app.run_test() as pilot:
+        await pilot.press("e", "a", "space", "enter", "J", "]")
+        await pilot.pause()
+        assert "демон не запущен" in today(app).header_text()
+
+
+async def test_reconnects_when_daemon_comes_up(svc):
+    from .tui_backend import FlakyBackend
+    import asyncio
+    svc.call("task_quick_add", text="зубы")
+    backend = FlakyBackend(svc)
+    app = DaykeeperApp(backend)
+    app.RETRY_S = 0.05
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert "демон не запущен" in today(app).header_text()
+        backend.up = True
+        await asyncio.sleep(0.3)
+        await pilot.pause()
+        assert "СЕГОДНЯ" in today(app).header_text()
+        assert "зубы" in today(app).list_text()
+
+
+async def test_switches_to_new_day_after_midnight(svc, clock):
+    import asyncio
+    svc.call("task_quick_add", text="зубы")
+    app = DaykeeperApp(FakeBackend(svc))
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        clock.set(datetime(2026, 10, 19, 0, 0, 5))
+        svc.tick()
+        await asyncio.sleep(0.1)
+        await pilot.pause()
+        assert "СЕГОДНЯ · пн 19 окт" in today(app).header_text()
+
+
+async def test_refreshes_after_external_reorder(day_svc):
+    import asyncio
+    app = DaykeeperApp(FakeBackend(day_svc))
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        day_svc.call("task_move", task_id=4, index=1)  # e.g. Claude over MCP
+        await asyncio.sleep(0.1)
+        await pilot.pause()
+        assert "прочитать 20 страниц" in lines(app)[1]

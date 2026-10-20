@@ -137,7 +137,7 @@ class TodayScreen(Screen):
 
     def _width(self) -> int:
         """Usable columns inside the screen padding; everything is laid out to this."""
-        return max(28, self.app.size.width - 4)
+        return w.usable_width(self.app.size.width, 28)
 
     def on_resize(self) -> None:
         if self.data and not self.down:

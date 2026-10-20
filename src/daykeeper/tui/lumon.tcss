@@ -3,6 +3,9 @@ Screen {
     background: #0f1a24;
     color: #cfe6f2;
     padding: 1 2;
+    /* always reserve the scrollbar column, so a long page doesn't narrow the layout and wrap full-width rules */
+    scrollbar-gutter: stable;
+    scrollbar-size-vertical: 1;
 }
 
 #header, #timer, #list, #footer, #summary, #dash {

@@ -22,6 +22,12 @@ FIRE = "\U000f0238"  # md: fire
 WEEKDAYS =["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
 MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 WIDTH = 50
+SCREEN_CHROME = 5  # Screen padding (2 + 2) and the reserved scrollbar column (lumon.tcss)
+
+
+def usable_width(app_width: int, floor: int) -> int:
+    """Columns available to content inside a Screen of an `app_width`-wide terminal."""
+    return max(floor, app_width - SCREEN_CHROME)
 
 
 def human_day(d: date, today: date) -> str:

@@ -28,7 +28,7 @@ async def test_today_rows_fill_window(svc, cols):
     async with app.run_test(size=(cols, 30)) as pilot:
         await pilot.pause()
         screen = app.screen
-        inner = cols - 4  # Screen padding: 2 each side
+        inner = cols - 5  # Screen padding 2 each side + scrollbar column
         rows = screen.list_text().splitlines()
         assert all(Text(r).cell_len == inner for r in rows), widths(screen.list_text())
         assert max(widths(screen.header_text())) == inner
@@ -48,7 +48,7 @@ async def test_today_redraws_on_resize(svc):
         await pilot.pause()
         await pilot.resize_terminal(100, 30)
         await pilot.pause()
-        assert all(Text(r).cell_len == 96 for r in app.screen.list_text().splitlines())
+        assert all(Text(r).cell_len == 95 for r in app.screen.list_text().splitlines())
 
 
 async def test_timer_bar_scales(svc):
@@ -112,3 +112,36 @@ async def test_no_emoji_on_dashboard(svc):
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
         assert _no_wide(app.screen.dash_text()) == []
+
+
+def _height(screen, wid: str) -> int:
+    return screen.query_one(wid).virtual_size.height
+
+
+@pytest.mark.parametrize("cols", [60, 100])
+async def test_dashboard_rules_do_not_wrap_in_short_window(svc, cols):
+    """A short window scrolls; the scrollbar must not push full-width rules onto a second line."""
+    svc.call("tracker_add", name="сон", unit="ч")
+    for i in range(16):
+        svc.call("habit_add", title=f"привычка {i}")
+    app = DaykeeperApp(FakeBackend(svc), start_screen="dash")
+    async with app.run_test(size=(cols, 20)) as pilot:
+        await pilot.pause()
+        screen = app.screen
+        assert screen.virtual_size.height > 20  # it really scrolls
+        assert _height(screen, "#dash-head") == 2
+        assert screen.max_scroll_x == 0
+        assert _height(screen, "#dash-foot") == len(screen.query_one("#dash-foot").visual.plain.splitlines())
+
+
+async def test_today_rows_do_not_wrap_in_short_window(svc):
+    for i in range(30):
+        svc.call("task_quick_add", text=f"задача {i}")
+    app = DaykeeperApp(FakeBackend(svc))
+    async with app.run_test(size=(60, 20)) as pilot:
+        await pilot.pause()
+        screen = app.screen
+        assert screen.virtual_size.height > 20
+        assert _height(screen, "#header") == 2
+        assert _height(screen, "#list") == len(screen.tasks)
+        assert screen.max_scroll_x == 0

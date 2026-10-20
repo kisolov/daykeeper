@@ -89,7 +89,7 @@ class DashboardScreen(Screen):
 
     def _layout(self) -> tuple[int, int]:
         """(total width, column width) for the current window; also flips the column layout."""
-        width = max(30, self.app.size.width - 4)
+        width = w.usable_width(self.app.size.width, 30)
         self.two_columns = width >= TWO_COLUMNS_FROM
         col = (width - 4) // 2 if self.two_columns else width
         cols = self.query_one("#dash-cols")

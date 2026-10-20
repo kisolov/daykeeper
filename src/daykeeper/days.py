@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from datetime import date, datetime
 
-from .models import Task
+from .models import Habit, Task
 from .repo import Repo
 
 
@@ -20,12 +20,21 @@ class Days:
         row = self.repo.day_row(day)
         if day >= today and (not row or not row["spawned"]):
             for habit in self.repo.habits(active_only=True):
-                if day.weekday() in habit.weekdays:
-                    self.repo.insert_task(
-                        Task(None, day, habit.title, "check", tag=habit.tag, habit_id=habit.id), len(self.repo.tasks(day))
-                    )
+                self._spawn(habit, day)
             self.repo.upsert_day(day, spawned=1)
         self._autoclose_before(min(day, today))
+
+    def spawn_habit(self, habit: Habit) -> None:
+        """A new habit joins today and the future days already spawned (later ones get it from `ensure`)."""
+        today = self.clock().date()
+        for row in self.repo.days_where("spawned=1 AND day >= ?", (today.isoformat(),)):
+            self._spawn(habit, date.fromisoformat(row["day"]))
+
+    def _spawn(self, habit: Habit, day: date) -> None:
+        if day.weekday() in habit.weekdays:
+            self.repo.insert_task(
+                Task(None, day, habit.title, "check", tag=habit.tag, habit_id=habit.id), len(self.repo.tasks(day))
+            )
 
     def _autoclose_before(self, day: date) -> None:
         rows = self.repo.con.execute(

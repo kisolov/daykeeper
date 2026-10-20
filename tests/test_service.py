@@ -114,7 +114,7 @@ def test_change_listener(svc):
 
 def test_habits_goals_trackers(svc):
     svc.call("habit_add", title="зарядка", weekdays=[0, 1, 2, 3, 4, 5, 6], tag="sport")
-    assert [t["title"] for t in svc.call("day_get")["tasks"]] == []  # today already spawned before the habit
+    assert [t["title"] for t in svc.call("day_get")["tasks"]] == ["зарядка"]
     assert svc.call("day_get", day="2026-10-19")["tasks"][0]["title"] == "зарядка"
     svc.call("tracker_add", name="вес", unit="кг")
     svc.call("tracker_log", tracker="вес", value=78.4)
@@ -196,3 +196,27 @@ def test_live_state_version_bumps_on_change(svc):
     assert svc.live_state()["version"] > v0
     svc.call("day_get")
     assert svc.live_state()["version"] == v0 + 1
+
+
+def test_new_habit_joins_days_already_planned(svc):
+    """A habit added later still shows up today and in future days that already exist — not in the past."""
+    svc.call("task_quick_add", text="вчера", day="2026-10-17")
+    svc.call("day_get")  # today (2026-10-18, Sunday) spawned with no habits yet
+    svc.call("task_quick_add", text="пары", day="2026-10-19")
+    svc.call("task_quick_add", text="суббота", day="2026-10-24")
+    svc.call("habit_add", title="порядок")
+    svc.call("habit_add", title="только будни", weekdays=[0, 1, 2, 3, 4])
+
+    titles = lambda d: [t["title"] for t in svc.call("day_get", day=d)["tasks"]]  # noqa: E731
+    assert titles("2026-10-18") == ["порядок"]
+    assert titles("2026-10-19") == ["пары", "порядок", "только будни"]
+    assert titles("2026-10-24") == ["суббота", "порядок"]
+    assert titles("2026-10-17") == ["вчера"]
+
+
+def test_habit_removed_for_a_day_stays_removed(svc):
+    svc.call("habit_add", title="порядок")
+    task = svc.call("day_get")["tasks"][0]
+    svc.call("task_delete", task_id=task["id"])
+    svc.call("habit_add", title="рутина")
+    assert [t["title"] for t in svc.call("day_get")["tasks"]] == ["рутина"]

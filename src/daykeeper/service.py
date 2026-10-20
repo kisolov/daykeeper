@@ -266,7 +266,9 @@ class Service:
 
     def habit_add(self, title, weekdays=None, tag=None) -> dict:
         wd = frozenset(int(x) for x in weekdays) if weekdays is not None else frozenset(range(7))
-        return self._habit_view(self.repo.add_habit(Habit(None, title, wd, tag)))
+        habit = self.repo.add_habit(Habit(None, title, wd, tag))
+        self.days.spawn_habit(habit)
+        return self._habit_view(habit)
 
     def habit_update(self, habit_id, **fields) -> dict:
         if "weekdays" in fields:

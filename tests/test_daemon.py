@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -59,6 +60,14 @@ async def test_manual_skip_is_silent(daemon):
     assert rec.played == []
 
 
-def test_clock_default_is_wall_time(tmp_path):
+def test_clock_default_is_moscow_time(tmp_path):
     d = Daemon(Config(db_path=tmp_path / "d.db", socket_path=tmp_path / "s.sock"))
-    assert abs((d.clock() - datetime.now()).total_seconds()) < 5
+    msk = datetime.now(ZoneInfo("Europe/Moscow")).replace(tzinfo=None)
+    assert d.clock().tzinfo is None
+    assert abs((d.clock() - msk).total_seconds()) < 5
+
+
+def test_clock_follows_configured_timezone(tmp_path):
+    cfg = Config(db_path=tmp_path / "d.db", socket_path=tmp_path / "s.sock", timezone="Asia/Tokyo")
+    tokyo = datetime.now(ZoneInfo("Asia/Tokyo")).replace(tzinfo=None)
+    assert abs((Daemon(cfg).clock() - tokyo).total_seconds()) < 5

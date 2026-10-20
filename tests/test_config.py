@@ -38,3 +38,13 @@ def test_sound_config(tmp_path):
     p.write_text("[sound]\nenabled = false\nvolume = 0.2\n")
     c = load_config(p)
     assert c.sound is False and c.sound_volume == 0.2
+
+
+def test_timezone_defaults_to_moscow(tmp_path):
+    assert load_config(tmp_path / "none.toml").timezone == "Europe/Moscow"
+
+
+def test_timezone_config(tmp_path):
+    p = tmp_path / "c.toml"
+    p.write_text('timezone = "Asia/Tokyo"\n')
+    assert load_config(p).timezone == "Asia/Tokyo"

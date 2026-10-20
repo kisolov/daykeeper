@@ -4,6 +4,7 @@ import asyncio
 import logging
 import signal
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -19,8 +20,12 @@ log = logging.getLogger("daykeeper")
 
 
 class Daemon:
-    def __init__(self, cfg: Config, clock=datetime.now):
+    def __init__(self, cfg: Config, clock=None):
         self.cfg = cfg
+        if clock is None:
+            zone = ZoneInfo(cfg.timezone)
+            # naive wall time in the configured zone: the DB stores naive datetimes
+            clock = lambda: datetime.now(zone).replace(tzinfo=None)  # noqa: E731
         self.clock = clock
         self.service = Service(connect(cfg.db_path), cfg, clock)
         self.notifiers: list[Notifier] = [DesktopNotifier(self.handle_action)]

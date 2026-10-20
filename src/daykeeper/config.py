@@ -24,6 +24,7 @@ class Config:
     tg_chat_id: int | None = None
     sound: bool = True
     sound_volume: float = 0.4
+    timezone: str = "Europe/Moscow"  # the planner's day and clock, independent of the system zone
 
     def __post_init__(self):
         if self.socket_path is None:
@@ -44,6 +45,7 @@ def load_config(path: Path | None = None) -> Config:
         tg_chat_id=int(tg["chat_id"]) if "chat_id" in tg else None,
         sound=bool(snd.get("enabled", True)),
         sound_volume=float(snd.get("volume", 0.4)),
+        timezone=str(raw.get("timezone", "Europe/Moscow")),
     )
     if token := os.environ.get("DAYKEEPER_TG_TOKEN"):
         cfg.tg_token = token

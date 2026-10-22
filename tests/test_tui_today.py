@@ -217,3 +217,36 @@ async def test_refreshes_after_external_reorder(day_svc):
         await asyncio.sleep(0.1)
         await pilot.pause()
         assert "прочитать 20 страниц" in lines(app)[1]
+
+
+async def test_pending_summary_closes_on_russian_layout(svc, clock):
+    """With the ru layout active the q key arrives as «й»; the summary must still close."""
+    svc.call("task_quick_add", text="зубы")
+    clock.set(datetime(2026, 10, 19, 9))
+    backend = FakeBackend(svc)
+    app = DaykeeperApp(backend)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert isinstance(app.screen, SummaryScreen)
+        await pilot.press("й")
+        await pilot.pause()
+        assert isinstance(app.screen, TodayScreen)
+        assert ("summary_seen", {"day": "2026-10-18"}) in backend.calls
+
+
+async def test_today_keys_work_on_russian_layout(day_svc):
+    app = DaykeeperApp(FakeBackend(day_svc))
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("о", "о")  # j j
+        await pilot.pause()
+        assert today(app).cursor == 2
+        await pilot.press("ъ")  # ]
+        await pilot.pause()
+        assert "ЗАВТРА" in today(app).header_text()
+        await pilot.press("в")  # d
+        await pilot.pause()
+        assert type(app.screen).__name__ == "DashboardScreen"
+        await pilot.press("й")  # q: back to today
+        await pilot.pause()
+        assert isinstance(app.screen, TodayScreen)

@@ -53,10 +53,10 @@ def _spark(series: list) -> Text:
 class DashboardScreen(Screen):
     AUTO_FOCUS = None
     BINDINGS = [
-        Binding("left", "week(-1)", show=False),
-        Binding("right", "week(1)", show=False),
-        Binding("t", "this_week", show=False),
-        Binding("q,escape,d", "back", show=False),
+        Binding(w.keys("left"), "week(-1)", show=False),
+        Binding(w.keys("right"), "week(1)", show=False),
+        Binding(w.keys("t"), "this_week", show=False),
+        Binding(w.keys("q,escape,d"), "back", show=False),
     ]
 
     def __init__(self, backend):

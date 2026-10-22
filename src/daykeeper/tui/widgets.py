@@ -30,6 +30,24 @@ def usable_width(app_width: int, floor: int) -> int:
     return max(floor, app_width - SCREEN_CHROME)
 
 
+# Same physical key on the ЙЦУКЕН layout, so bindings keep working while Russian is active.
+_RU = dict(zip("qwertyuiopasdfghjklzxcvbnm", "йцукенгшщзфывапролдячсмить"))
+_RU_NAMED = {"left_square_bracket": "х", "right_square_bracket": "ъ"}
+
+
+def keys(spec: str) -> str:
+    """Binding key list plus the Russian-layout twin of every letter/bracket key in it."""
+    out = []
+    for key in spec.split(","):
+        out.append(key)
+        if key in _RU_NAMED:
+            out.append(_RU_NAMED[key])
+        elif len(key) == 1 and key.lower() in _RU:
+            twin = _RU[key.lower()]
+            out.append(twin.upper() if key.isupper() else twin)
+    return ",".join(out)
+
+
 def human_day(d: date, today: date) -> str:
     label = {0: "СЕГОДНЯ", 1: "ЗАВТРА", -1: "ВЧЕРА"}.get((d - today).days, "ДЕНЬ")
     return f"{label} · {WEEKDAYS[d.weekday()]} {d.day} {MONTHS[d.month - 1]}"

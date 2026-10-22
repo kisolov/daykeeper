@@ -13,7 +13,7 @@ from . import widgets as w
 
 
 class SummaryScreen(Screen):
-    BINDINGS = [Binding("q,escape,enter", "close", show=False)]
+    BINDINGS = [Binding(w.keys("q,escape,enter"), "close", show=False)]
 
     def __init__(self, day: str, summary: dict):
         super().__init__()

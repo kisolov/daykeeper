@@ -24,6 +24,7 @@ claude mcp add --scope user daykeeper -- daykeeper mcp
 | `daykeeper waybar` | поток статуса для модуля waybar |
 | `daykeeper daemon` | демон (обычно через systemd) |
 | `daykeeper mcp` | MCP-сервер для Claude Code |
+| `daykeeper block` / `unlock` / `lock` | блокировка соцсетей: статус / открыть на час по коду / закрыть сразу |
 
 Клавиши на «Сегодня»: `space` отметить, `enter` таймер, `p` пауза, `n` пропустить, `x` стоп,
 `J/K` переставить, `a` добавить, `[ ]` день, `e` завершить день, `d` дашборд, `q` выйти.
@@ -58,7 +59,37 @@ volume = 0.4           # 0..1; на свои действия (пропуск, �
 }
 ```
 
-CSS-классы: `work`, `break`, `paused`, `idle`, `down`.
+CSS-классы: `work`, `break`, `paused`, `idle`, `down`; плюс `unblocked`, пока соцсети открыты.
+
+## Блокировка соцсетей
+
+Instagram и YouTube закрыты всегда. Открыть на час можно двумя путями:
+
+- самому: `daykeeper unlock` — показывает случайный код из 48 символов, его надо перепечатать руками;
+- через Claude: попросить открыть — он зовёт MCP `block_challenge` → `block_unlock`.
+
+Через час блок возвращается сам; не больше 3 разблокировок в день. Код, лимит и таймер — в daykeeper
+(таблица `block_unlocks`). Сеть — root-хелпер `daykeeper-netblock lock|unlock`, который переключает
+rule-set с `reject` в sing-box (TUN + `sniff`, поэтому DoH браузера не помогает) и перезапускает его,
+рвя открытые соединения. Демон зовёт хелпер через `sudo -n` (NOPASSWD только на него).
+При загрузке система поднимается с блоком; демон при старте приводит сеть к сохранённому состоянию.
+
+Установка сетевой части (один раз):
+
+```bash
+sudo bash contrib/netblock/install.sh
+```
+
+Список доменов — `/etc/daykeeper-netblock/blocked.json` (исходник `contrib/netblock/blocked.json`).
+Настройки — в конфиге:
+
+```toml
+[block]
+minutes = 60
+daily_limit = 3
+code_len = 48
+helper = "/usr/local/bin/daykeeper-netblock"
+```
 
 ## Разработка
 

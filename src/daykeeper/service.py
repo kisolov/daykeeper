@@ -5,6 +5,7 @@ import sqlite3
 from collections.abc import Callable
 from datetime import date, datetime, time
 
+from .block import Block, Net, SudoHelper
 from .config import Config
 from .days import Days
 from .models import Goal, Habit, Task, Tracker
@@ -25,7 +26,7 @@ class ServiceError(Exception):
 
 READ_ONLY = {
     "day_get", "timer_status", "day_summary", "summary_pending", "habit_list", "goal_list",
-    "tracker_list", "stats_range", "dashboard", "history",
+    "tracker_list", "stats_range", "dashboard", "history", "block_status", "block_challenge",
 }
 
 
@@ -60,15 +61,17 @@ class Service:
         "goal_add", "goal_update", "goal_delete", "goal_list",
         "tracker_add", "tracker_delete", "tracker_list", "tracker_log",
         "stats_range", "dashboard", "history",
+        "block_status", "block_challenge", "block_unlock", "block_lock",
     )
 
-    def __init__(self, con: sqlite3.Connection, cfg: Config, clock: Callable[[], datetime]):
+    def __init__(self, con: sqlite3.Connection, cfg: Config, clock: Callable[[], datetime], net: Net | None = None):
         self.cfg = cfg
         self.clock = clock
         self.repo = Repo(con)
         self.stats = Stats(self.repo)
         self.days = Days(self.repo, self.stats.day_summary, clock)
         self.timer = Timer(self.repo, cfg, clock)
+        self.block = Block(con, cfg, clock, net or SudoHelper(cfg.block_helper))
         self.on_event: Callable[[list[Event]], None] = lambda events: None
         self.on_change: Callable[[], None] = lambda: None
         self.version = 0
@@ -118,6 +121,8 @@ class Service:
         if today != self._last_day:
             self._last_day = today
             self.days.ensure(today)
+            changed = True
+        if self.block.tick():
             changed = True
         events = self.timer.tick()
         if events:
@@ -345,6 +350,20 @@ class Service:
         days = sorted({t.day for t in self.repo.tasks_between(s, e)})
         return [self.stats.day_summary(d) for d in days]
 
+    # --- site block ------------------------------------------------------
+
+    def block_status(self) -> dict:
+        return self.block.status()
+
+    def block_challenge(self) -> dict:
+        return self.block.challenge()
+
+    def block_unlock(self, code) -> dict:
+        return self.block.unlock(str(code))
+
+    def block_lock(self) -> dict:
+        return self.block.lock()
+
     # --- live state for subscribers --------------------------------------
 
     def live_state(self) -> dict:
@@ -356,6 +375,7 @@ class Service:
             "today": today.isoformat(),
             "version": self.version,
             "timer": self.timer_status(),
+            "block": self.block.status(),
             "day": {
                 "done": sum(t.done for t in tasks), "total": len(tasks),
                 "next_timed": {"title": upcoming[0].title, "start": _hm(upcoming[0].start)} if upcoming else None,

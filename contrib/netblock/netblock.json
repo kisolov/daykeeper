@@ -1,0 +1,10 @@
+{
+  "route": {
+    "rules": [
+      { "rule_set": "daykeeper-netblock", "action": "reject" }
+    ],
+    "rule_set": [
+      { "type": "local", "tag": "daykeeper-netblock", "format": "source", "path": "/etc/daykeeper-netblock/active.json" }
+    ]
+  }
+}

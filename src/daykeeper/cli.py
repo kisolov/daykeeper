@@ -25,6 +25,9 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("status", help="одна строка статуса waybar (JSON)")
     for name in TIMER_COMMANDS:
         sub.add_parser(name, help=f"таймер: {name}")
+    sub.add_parser("block", help="статус блокировки соцсетей")
+    sub.add_parser("unlock", help="открыть соцсети на час: перепечатать случайный код")
+    sub.add_parser("lock", help="вернуть блокировку соцсетей сразу")
     add = sub.add_parser("add", help='быстро добавить задачу: "тренировка 2ч", "09:00-10:00 работа"')
     add.add_argument("text", nargs="+")
     return p
@@ -36,6 +39,11 @@ async def _status_once(client: Client) -> dict:
         return await anext(stream)
     finally:
         await stream.aclose()
+
+
+def _block_line(st: dict) -> str:
+    head = "блокировка включена" if st["blocked"] else f"соцсети открыты до {st['until']}"
+    return f"{head} · разблокировок сегодня {st['used_today']}/{st['daily_limit']}"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -62,6 +70,16 @@ def main(argv: list[str] | None = None) -> None:
             case "add":
                 task = client.call("task_quick_add", text=" ".join(args.text))
                 print(f"добавлено: {task['title']}")
+            case "block":
+                print(_block_line(client.call("block_status")))
+            case "lock":
+                print(_block_line(client.call("block_lock")))
+            case "unlock":
+                ch = client.call("block_challenge")
+                print(f"Разблокировок сегодня: {ch['used_today']}/{ch['daily_limit']}. "
+                      f"Перепечатай код руками (живёт {ch['expires_min']} мин):\n\n  {ch['code']}\n")
+                code = input("> ")
+                print(_block_line(client.call("block_unlock", code=code)))
             case cmd if cmd in TIMER_COMMANDS:
                 client.call(TIMER_COMMANDS[cmd])
     except DaemonDown as e:

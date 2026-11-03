@@ -25,6 +25,10 @@ class Config:
     sound: bool = True
     sound_volume: float = 0.4
     timezone: str = "Europe/Moscow"  # the planner's day and clock, independent of the system zone
+    block_helper: str = "/usr/local/bin/daykeeper-netblock"
+    block_minutes: int = 60
+    block_daily_limit: int = 3
+    block_code_len: int = 48
 
     def __post_init__(self):
         if self.socket_path is None:
@@ -38,6 +42,7 @@ def load_config(path: Path | None = None) -> Config:
         raw = tomllib.loads(path.read_text())
     tg = raw.get("telegram", {})
     snd = raw.get("sound", {})
+    blk = raw.get("block", {})
     cfg = Config(
         work_min=int(raw.get("work_min", 47)),
         break_min=int(raw.get("break_min", 13)),
@@ -46,6 +51,10 @@ def load_config(path: Path | None = None) -> Config:
         sound=bool(snd.get("enabled", True)),
         sound_volume=float(snd.get("volume", 0.4)),
         timezone=str(raw.get("timezone", "Europe/Moscow")),
+        block_helper=str(blk.get("helper", "/usr/local/bin/daykeeper-netblock")),
+        block_minutes=int(blk.get("minutes", 60)),
+        block_daily_limit=int(blk.get("daily_limit", 3)),
+        block_code_len=int(blk.get("code_len", 48)),
     )
     if token := os.environ.get("DAYKEEPER_TG_TOKEN"):
         cfg.tg_token = token

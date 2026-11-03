@@ -78,7 +78,16 @@ CREATE TABLE timer (
 
 SCHEMA_V2 = "ALTER TABLE timer ADD COLUMN heartbeat TEXT;"
 
-MIGRATIONS = [SCHEMA_V1, SCHEMA_V2]
+SCHEMA_V3 = """
+CREATE TABLE block_unlocks (
+    id INTEGER PRIMARY KEY,
+    started TEXT NOT NULL,
+    until TEXT NOT NULL,
+    relocked INTEGER NOT NULL DEFAULT 0
+);
+"""
+
+MIGRATIONS = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3]
 
 
 def connect(path: Path) -> sqlite3.Connection:

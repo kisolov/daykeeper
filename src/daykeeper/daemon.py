@@ -85,6 +85,7 @@ class Daemon:
 
     async def run(self) -> None:
         self.service.timer.restore()
+        await asyncio.to_thread(self.service.block.enforce)
         server = await serve(self.service, self.cfg.socket_path)
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):

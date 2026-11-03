@@ -7,14 +7,14 @@ from daykeeper.models import Task
 def test_connect_creates_schema(tmp_path):
     con = connect(tmp_path / "a" / "x.db")
     names = {r[0] for r in con.execute("select name from sqlite_master where type='table'")}
-    assert {"tasks", "habits", "trackers", "tracker_entries", "goals", "segments", "days", "timer"} <= names
-    assert con.execute("pragma user_version").fetchone()[0] == 2
+    assert {"tasks", "habits", "trackers", "tracker_entries", "goals", "segments", "days", "timer", "block_unlocks"} <= names
+    assert con.execute("pragma user_version").fetchone()[0] == 3
 
 
 def test_connect_is_idempotent(tmp_path):
     connect(tmp_path / "x.db").close()
     con = connect(tmp_path / "x.db")
-    assert con.execute("pragma user_version").fetchone()[0] == 2
+    assert con.execute("pragma user_version").fetchone()[0] == 3
 
 
 def test_planned_min():

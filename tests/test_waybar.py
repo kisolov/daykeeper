@@ -93,3 +93,12 @@ async def test_stream_follows_daemon(tmp_path, db, clock):
     await srv.close()
     first = json.loads(out.getvalue().splitlines()[0])
     assert first["text"].endswith("ay 0/1")
+
+
+def test_unblocked_is_marked():
+    r = render(state() | {"block": {"blocked": False, "until": "15:40"}})
+    assert r["class"] == ["idle", "unblocked"] and "соцсети открыты до 15:40" in r["tooltip"]
+
+
+def test_blocked_adds_nothing():
+    assert render(state() | {"block": {"blocked": True, "until": None}}) == render(state())

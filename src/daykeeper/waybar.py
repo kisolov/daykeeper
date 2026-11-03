@@ -20,6 +20,15 @@ def _clock(seconds: int) -> str:
 
 
 def render(state: dict | None) -> dict:
+    out = _render(state)
+    blk = (state or {}).get("block")
+    if blk and not blk["blocked"]:
+        out["class"] = [*out["class"], "unblocked"]
+        out["tooltip"] += f"\nсоцсети открыты до {blk['until']}"
+    return out
+
+
+def _render(state: dict | None) -> dict:
     if state is None:
         return {"text": f"{_word('day', MUTED)} —", "class": ["down"], "alt": "down",
                 "tooltip": "демон не запущен (systemctl --user start daykeeper)"}

@@ -1,0 +1,25 @@
+#!/bin/bash
+# Root helper for daykeeper's site block: only flips the block in sing-box, nothing else.
+# Codes, daily limit and the relock deadline live in daykeeper; it calls this via `sudo -n`.
+#   daykeeper-netblock lock|unlock [--no-restart]
+#   daykeeper-netblock status
+set -euo pipefail
+DIR=/etc/daykeeper-netblock
+
+case "${1:-}" in
+  lock) src=blocked.json ;;
+  unlock) src=unblocked.json ;;
+  status)
+    if cmp -s "$DIR/active.json" "$DIR/blocked.json"; then echo blocked; else echo unblocked; fi
+    exit 0 ;;
+  *) echo "usage: daykeeper-netblock lock|unlock [--no-restart] | status" >&2; exit 2 ;;
+esac
+[[ $EUID -eq 0 ]] || { echo "нужен root" >&2; exit 1; }
+
+# already there: no sing-box restart, so the daemon may call this on every start
+cmp -s "$DIR/$src" "$DIR/active.json" && exit 0
+
+install -m 644 "$DIR/$src" "$DIR/active.json.tmp"
+mv -f "$DIR/active.json.tmp" "$DIR/active.json"
+# a restart reloads the rule-set and drops connections opened while unblocked
+[[ "${2:-}" == "--no-restart" ]] || systemctl restart sing-box

@@ -1,0 +1,10 @@
+[Unit]
+Description=daykeeper: block social sites on boot
+Before=sing-box.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/daykeeper-netblock lock --no-restart
+
+[Install]
+WantedBy=multi-user.target

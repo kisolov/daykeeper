@@ -241,6 +241,30 @@ def build_server(backend: Backend) -> MCPServer:
         """Сводки всех дней с задачами за период."""
         return call("history", start=start, end=end)
 
+    # --- site block ------------------------------------------------------
+
+    @tool
+    def block_status() -> str:
+        """Блокировка Instagram/YouTube: включена ли, до скольких открыто, сколько разблокировок сегодня из лимита."""
+        return call("block_status")
+
+    @tool
+    def block_challenge() -> str:
+        """Шаг 1 разблокировки на час: выдать случайный код. Звать, только когда пользователь сам прямо попросил
+        открыть соцсети. Код показать пользователю — он может перепечатать его сам (daykeeper unlock), или
+        разблокировку по его просьбе делаешь ты через block_unlock. Лимит разблокировок в день — в ответе."""
+        return call("block_challenge")
+
+    @tool
+    def block_unlock(code: str) -> str:
+        """Шаг 2: снять блок на час кодом из block_challenge. Через час блок вернётся сам."""
+        return call("block_unlock", code=code)
+
+    @tool
+    def block_lock() -> str:
+        """Вернуть блокировку сразу, не дожидаясь конца часа."""
+        return call("block_lock")
+
     @tool
     def plan_context(days: int = 7) -> str:
         """Звать перед планированием завтра: сегодня, завтра, непросмотренная сводка, сводки за последние days дней,

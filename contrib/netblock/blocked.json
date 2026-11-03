@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "rules": [
+    {
+      "domain_suffix": [
+        "instagram.com", "cdninstagram.com", "instagr.am", "ig.me",
+        "youtube.com", "youtu.be", "ytimg.com", "googlevideo.com",
+        "youtube-nocookie.com", "youtubei.googleapis.com", "youtube.googleapis.com"
+      ]
+    }
+  ]
+}
